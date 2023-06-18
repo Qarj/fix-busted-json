@@ -64,6 +64,41 @@ Output:
 { "name": "John", "age": 30, "city": "New York" }
 ```
 
+## Why
+
+The project was developed originally to find JSON like objects in log files and pretty print them.
+
+More recently this project has been used to find and then fix broken JSON created by large language models such as `gpt-3.5-turbo` and `gpt-4`.
+
+For example a large language model might output a completion like the following:
+
+```txt
+Thought: "I need to search for developer jobs in London"
+Action: SearchTool
+ActionInput: { location: "London", 'title': "developer" }
+```
+
+To get back this JSON object with this project is really easy:
+
+```py
+#!/usr/bin/env python3
+
+from fix_busted_json import first_json
+
+completion = """Thought: "I need to search for developer jobs in London"
+Action: SearchTool
+ActionInput: { location: "London", 'title': "developer" }
+"""
+
+print(first_json(completion))
+```
+
+Output:
+
+```json
+{ "location": "London", "title": "developer" }
+```
+
 ## API
 
 ### `repair_json`
@@ -158,3 +193,7 @@ Output:
 { "second_example": 456 }
 { "third": 789 }
 ```
+
+## See also
+
+Node version of this project: https://www.npmjs.com/package/log-parsed-json
