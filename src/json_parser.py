@@ -1,7 +1,7 @@
 import json
 import re
 
-class FixBustedJson:
+class JsonParser:
     def __init__(self, input):
         self.inspected = self.de_stringify(input)
         self.reset_pointer()
@@ -20,7 +20,7 @@ class FixBustedJson:
         self.checkpoint = self.position
         self.checkpoint_quoted = self.quoted
 
-    def __str__(self):
+    def repair_json(self):
         self.reset_pointer()
         self.eat_object()
         return self.quoted

@@ -1,6 +1,6 @@
 import json
 import sys
-from FixBustedJson import FixBustedJson
+from json_parser import JsonParser
 
 def log(obj):
     if isinstance(obj, (int, float)):
@@ -52,24 +52,24 @@ def log_pretty(obj):
     except Exception:
         print(obj)
 
-def to_string(input):
-    parse_json = FixBustedJson(input)
-    return str(parse_json)
+def repair_json(input):
+    parse_json = JsonParser(input)
+    return parse_json.repair_json()
 
 def to_array_of_plain_strings_or_json(input):
-    parse_json = FixBustedJson(input)
+    parse_json = JsonParser(input)
     return parse_json.to_array_of_plain_strings_or_json()
 
 def can_parse_json(input):
-    parse_json = FixBustedJson(input)
+    parse_json = JsonParser(input)
     try:
-        str(parse_json)
+        parse_json.repair_json()
         return True
     except Exception:
         return False
 
 def first_json(input):
-    parse_json = FixBustedJson(input)
+    parse_json = JsonParser(input)
     result = parse_json.to_array_of_plain_strings_or_json()
     for item in result:
         if can_parse_json(item):
@@ -77,7 +77,7 @@ def first_json(input):
     return ""
 
 def last_json(input):
-    parse_json = FixBustedJson(input)
+    parse_json = JsonParser(input)
     result = parse_json.to_array_of_plain_strings_or_json()
     for i in range(len(result) - 1, -1, -1):
         if can_parse_json(result[i]):
@@ -85,7 +85,7 @@ def last_json(input):
     return ""
 
 def largest_json(input):
-    parse_json = FixBustedJson(input)
+    parse_json = JsonParser(input)
     result = parse_json.to_array_of_plain_strings_or_json()
     largest = ""
     for item in result:
@@ -94,7 +94,7 @@ def largest_json(input):
     return largest
 
 def json_matching(input, regex):
-    parse_json = FixBustedJson(input)
+    parse_json = JsonParser(input)
     result = parse_json.to_array_of_plain_strings_or_json()
     for item in result:
         if can_parse_json(item) and regex.search(item):
