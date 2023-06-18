@@ -5,7 +5,7 @@ class FixBustedJson:
     def __init__(self, input):
         self.inspected = self.de_stringify(input)
         self.reset_pointer()
-        self.debug = True
+        self.debug = False
 
     def reset_pointer(self):
         self.position = 0
@@ -66,6 +66,8 @@ class FixBustedJson:
             self.position += 1
 
     def eat_object(self):
+        if self.debug:
+            print('eat_object', self.position, self.inspected[self.position])
         self.eat_whitespace()
         self.eat_open_brace()
         self.eat_key_value_pairs()
@@ -73,6 +75,8 @@ class FixBustedJson:
         self.eat_close_brace()
 
     def eat_key_value_pairs(self):
+        if self.debug:
+            print('eat_key_value_pairs', self.position, self.inspected[self.position])
         while True:
             self.eat_whitespace()
             if self.inspected[self.position] == '}':
@@ -153,18 +157,24 @@ class FixBustedJson:
             self.position += 1
 
     def eat_open_brace(self):
+        if self.debug:
+            print('eat_open_brace', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '{':
             raise Exception('Expected open brace')
         self.quoted += self.inspected[self.position] + ' '
         self.position += 1
 
     def eat_close_brace(self):
+        if self.debug:
+            print('eat_close_brace', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '}':
             raise Exception('Expected close brace')
         self.quoted += ' ' + self.inspected[self.position]
         self.position += 1
 
     def eat_key(self):
+        if self.debug:
+            print('eat_key', self.position, self.inspected[self.position])
         if self.get_quote():
             self.eat_quoted_key()
         else:
@@ -211,6 +221,8 @@ class FixBustedJson:
             self.position += 1
 
     def eat_quoted_key(self):
+        if self.debug:
+            print('eat_quoted_key', self.position, self.inspected[self.position])
         self.set_checkpoint()
         self.throw_if_json_special_character(self.inspected[self.position])
         quote = self.get_quote()
@@ -224,6 +236,8 @@ class FixBustedJson:
         self.eat_quote_additional(quote)
 
     def eat_unquoted_key(self):
+        if self.debug:
+            print('eat_unquoted_key', self.position, self.inspected[self.position])
         self.set_checkpoint()
         if self.inspected[self.position] == '[':
             return self.eat_null_key()
@@ -237,6 +251,8 @@ class FixBustedJson:
         self.quoted += '"'
 
     def eat_null_key(self):
+        if self.debug:
+            print('eat_null_key', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '[':
             raise Exception('Expected open bracket')
         self.position += 1
@@ -262,12 +278,16 @@ class FixBustedJson:
             raise Exception(f'Unexpected character {char} at position {self.position}')
 
     def eat_colon(self):
+        if self.debug:
+            print('eat_colon', self.position, self.inspected[self.position])
         if self.inspected[self.position] != ':':
             raise Exception('Expected colon')
         self.quoted += self.inspected[self.position] + ' '
         self.position += 1
 
     def eat_value(self):
+        if self.debug:
+            print('eat_value', self.position, self.inspected[self.position])
         if self.inspected[self.position] == '{':
             self.eat_object()
         elif self.get_quote():
@@ -279,6 +299,8 @@ class FixBustedJson:
             self.eat_primitive()
 
     def eat_string(self):
+        if self.debug:
+            print('eat_string', self.position, self.inspected[self.position])
         self.set_checkpoint()
         quote = self.get_quote()
         self.quoted += '"'
@@ -291,6 +313,8 @@ class FixBustedJson:
         self.eat_quote_additional(quote)
 
     def eat_concatenated_strings(self):
+        if self.debug:
+            print('eat_concatenated_strings', self.position, self.inspected[self.position])
         virtual_position = self.eat_virtual_whitespace(self.position + 1)
         if self.inspected[virtual_position] != '+':
             return
@@ -321,8 +345,10 @@ class FixBustedJson:
         return self.check_quote(quote)
 
     def eat_virtual_whitespace(self, virtual_position):
+        if virtual_position >= len(self.inspected):
+            return virtual_position - 1
         whitespace_regex = re.compile(r'\s')
-        while whitespace_regex.match(self.inspected[virtual_position]):
+        while virtual_position < len(self.inspected) and whitespace_regex.match(self.inspected[virtual_position]):
             virtual_position += 1
         return virtual_position
 
@@ -336,6 +362,8 @@ class FixBustedJson:
         )
 
     def eat_char_or_escaped_char(self, quote):
+        if self.debug:
+            print('eat_char_or_escaped_char', self.position, self.inspected[self.position])
         if self.position >= len(self.inspected):
             raise Exception('Unexpected end of quoted key or string')
         if self.debug:
@@ -359,6 +387,8 @@ class FixBustedJson:
         self.position += 1
 
     def eat_array(self):
+        if self.debug:
+            print('eat_array', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '[':
             raise Exception('Expected array')
         self.quoted += self.inspected[self.position]
@@ -409,6 +439,8 @@ class FixBustedJson:
         self.quoted += '"Circular"'
 
     def eat_comma(self):
+        if self.debug:
+            print('eat_comma', self.position, self.inspected[self.position])
         if self.inspected[self.position] != ',':
             raise Exception('Expected comma')
         self.quoted += self.inspected[self.position] + ' '
