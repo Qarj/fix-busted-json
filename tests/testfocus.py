@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import unittest
 from fix_busted_json import repair_json, to_array_of_plain_strings_or_json, first_json, last_json, largest_json, json_matching
 import json

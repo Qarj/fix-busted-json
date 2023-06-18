@@ -22,6 +22,9 @@ code $HOME/.pypirc
 [testpypi]
   username = __token__
   password = pypi-Ag...j
+[pypi]
+  username = __token__
+  password = pypi-Ag...w
 ```
 
 ## Generate distribution files
@@ -56,5 +59,18 @@ https://test.pypi.org/project/fix-busted-json/0.0.1/
 
 ```sh
 pip uninstall fix-busted-json -y
-pip install -i https://test.pypi.org/simple/ fix-busted-json==0.0.5
+pip install -i https://test.pypi.org/simple/ fix-busted-json==0.0.6
+```
+
+## Upload to PyPI
+
+```sh
+python -m twine upload dist/*
+```
+
+## Install from PyPI
+
+```sh
+pip uninstall fix-busted-json -y
+pip install fix-busted-json
 ```
