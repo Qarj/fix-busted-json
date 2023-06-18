@@ -56,5 +56,5 @@ https://test.pypi.org/project/fix-busted-json/0.0.1/
 
 ```sh
 pip uninstall fix-busted-json -y
-pip install -i https://test.pypi.org/simple/ fix-busted-json==0.0.2
+pip install -i https://test.pypi.org/simple/ fix-busted-json==0.0.5
 ```
