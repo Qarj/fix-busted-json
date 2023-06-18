@@ -106,7 +106,7 @@ class TestParseJson(unittest.TestCase):
         self.assertTrue(self.assert_is_json(result))
 
     def test_when_changing_single_quoted_string_to_double_quotes_needs_to_unquote_single_quotes(self):
-        with open('./singlequoted.txt', 'r') as file:
+        with open('tests/singlequoted.txt', 'r') as file:
             input = file.read()
         result = repair_json(input)
         expected = """{ "abc '": "test'", "key": 123 }"""
@@ -121,7 +121,7 @@ class TestParseJson(unittest.TestCase):
         self.assertTrue(self.assert_is_json(result))
 
     def test_when_changing_backticked_quoted_string_to_double_quotes_needs_to_unquote_single_quotes_but_not_double(self):
-        with open('./backticked.txt', 'r') as file:
+        with open('tests/backticked.txt', 'r') as file:
             input = file.read()
         result = repair_json(input)
         expected = """{ "abc '\\"`": "test`'\\"", "key": 123 }"""

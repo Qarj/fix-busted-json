@@ -1,0 +1,21 @@
+{
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python"
+    },
+    "python.formatting.provider": "none",
+    "python.formatting.blackArgs": ["--line-length", "120"],
+    "python.formatting.autopep8Args": ["--max-line-length=120"],
+    "search.exclude": {
+        "**/.git": true,
+        "**/cypress/results": true,
+        "**/downloads": true,
+        "**/mochawesome*": true,
+        "**/node_modules": true,
+        "**/test-results": true,
+        "**/test-reports*": true,
+        "**/screenshots": true
+    }
+}

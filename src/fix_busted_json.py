@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
+
 import json
-import sys
 from json_parser import JsonParser
 
 def log(obj):
