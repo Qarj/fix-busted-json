@@ -211,7 +211,7 @@ class JsonParser:
         self.eat_whitespace()
         self.eat_asterisk()
         self.eat_whitespace()
-        self.eat_number()
+        self.eat_reference_number()
         self.eat_whitespace()
         self.eat_close_angle_bracket()
 
@@ -236,7 +236,7 @@ class JsonParser:
             raise Exception('Expected asterisk')
         self.position += 1
 
-    def eat_number(self):
+    def eat_reference_number(self):
         number_regex = re.compile(r'[0-9]')
         while number_regex.match(self.inspected[self.position]):
             self.position += 1
@@ -497,11 +497,11 @@ class JsonParser:
 
         while True:
             self.eat_whitespace()
+            self.eat_circular_optional()
             if self.inspected[self.position] == ']':
                 self.remove_trailing_comma_if_present()
                 break
             self.quoted_last_comma_position = None
-            self.eat_circular_optional()
             self.eat_value()
             self.eat_whitespace()
 
@@ -556,47 +556,107 @@ class JsonParser:
         self.position += 1
         return False
 
+    # def eat_primitive(self):
+    #     self.set_checkpoint()
+
+    #     if (
+    #         self.inspected[self.position].lower() == 'f' and
+    #         self.inspected[self.position + 1].lower() == 'a' and
+    #         self.inspected[self.position + 2].lower() == 'l' and
+    #         self.inspected[self.position + 3].lower() == 's' and
+    #         self.inspected[self.position + 4].lower() == 'e'
+    #     ):
+    #         return self.eat_false()
+
+    #     if (
+    #         self.inspected[self.position].lower() == 'n' and
+    #         self.inspected[self.position + 1].lower() == 'o' and
+    #         self.inspected[self.position + 2].lower() == 'n' and
+    #         self.inspected[self.position + 3].lower() == 'e'
+    #     ):
+    #         return self.eat_none()
+
+    #     if (
+    #         self.inspected[self.position].lower() == 't' and
+    #         self.inspected[self.position + 1].lower() == 'r' and
+    #         self.inspected[self.position + 2].lower() == 'u' and
+    #         self.inspected[self.position + 3].lower() == 'e'
+    #     ):
+    #         return self.eat_true()
+
+    #     primitive_regex = re.compile(r'([0-9a-zA-Z-.])')
+    #     while primitive_regex.match(self.inspected[self.position]):
+    #         self.quoted += self.inspected[self.position]
+    #         self.position += 1
+
+    # def eat_false(self):
+    #     self.quoted += 'false'
+    #     self.position += 5
+
+    # def eat_none(self):
+    #     self.quoted += 'null'
+    #     self.position += 4
+
+    # def eat_true(self):
+    #     self.quoted += 'true'
+    #     self.position += 4
+
     def eat_primitive(self):
         self.set_checkpoint()
+        if self.debug:
+            print('eatPrimitive', self.position, self.inspected[self.position])
 
-        if (
-            self.inspected[self.position].lower() == 'f' and
-            self.inspected[self.position + 1].lower() == 'a' and
-            self.inspected[self.position + 2].lower() == 'l' and
-            self.inspected[self.position + 3].lower() == 's' and
-            self.inspected[self.position + 4].lower() == 'e'
-        ):
-            return self.eat_false()
+        lower_char = self.inspected[self.position].lower()
+        if lower_char == 'f' or lower_char == 't' or lower_char == 'n':
+            self.eat_keyword()
+        elif self.is_number_start_char(lower_char):
+            self.eat_number()
+        else:
+            raise ValueError('Primitive not recognized, must start with f, t, n, or be numeric')
 
-        if (
-            self.inspected[self.position].lower() == 'n' and
-            self.inspected[self.position + 1].lower() == 'o' and
-            self.inspected[self.position + 2].lower() == 'n' and
-            self.inspected[self.position + 3].lower() == 'e'
-        ):
-            return self.eat_none()
+    def is_number_start_char(self, char):
+        return char and re.match(r'[\-0-9]', char)
 
-        if (
-            self.inspected[self.position].lower() == 't' and
-            self.inspected[self.position + 1].lower() == 'r' and
-            self.inspected[self.position + 2].lower() == 'u' and
-            self.inspected[self.position + 3].lower() == 'e'
-        ):
-            return self.eat_true()
+    def eat_keyword(self):
+        lower_substring = self.inspected[self.position:self.position + 5].lower()
 
-        primitive_regex = re.compile(r'([0-9a-zA-Z-.])')
-        while primitive_regex.match(self.inspected[self.position]):
-            self.quoted += self.inspected[self.position]
+        if lower_substring.startswith('false'):
+            self.log('eatFalse')
+            self.quoted += 'false'
+            self.position += 5
+        elif lower_substring.startswith('true'):
+            self.log('eatTrue')
+            self.quoted += 'true'
+            self.position += 4
+        elif lower_substring.startswith('none') or lower_substring.startswith('null'):
+            self.log('eatNull')
+            self.quoted += 'null'
+            self.position += 4
+        else:
+            raise ValueError('Keyword not recognized, must be true, false, null or none')
+
+    def eat_number(self):
+        number_str = ''
+
+        self.log('eatNumber')
+
+        while self.is_number_char(self.inspected[self.position]):
+            number_str += self.inspected[self.position]
             self.position += 1
 
-    def eat_false(self):
-        self.quoted += 'false'
-        self.position += 5
+        check_str = number_str
+        if check_str.startswith('-'):
+            check_str = check_str[1:]
 
-    def eat_none(self):
-        self.quoted += 'null'
-        self.position += 4
+        if len(check_str) > 1 and check_str.startswith('0') and not check_str.startswith('0.'):
+            raise ValueError('Number cannot have redundant leading 0')
 
-    def eat_true(self):
-        self.quoted += 'true'
-        self.position += 4
+        self.quoted += number_str
+
+    def is_number_char(self, char):
+        return char and re.match(r'[\-0-9.]', char)
+    
+    def log(self, message):
+        if self.debug:
+            print(message, self.position, self.inspected[self.position])
+

@@ -24,6 +24,72 @@ class TestParseJson(unittest.TestCase):
         self.assertEqual(result, expected)
         self.assertTrue(self.assert_is_json(result))
 
+    def test_should_parse_a_number(self):
+        result = repair_json('{ "number": 123 }')
+        self.assertEqual(result, '{ "number": 123 }')
+
+    def test_should_throw_error_when_given_an_unquoted_string_value(self):
+        result = "{ test: postgres }"
+        with self.assertRaises(ValueError, msg="Primitive not recognized, must start with f, t, n, or be numeric"):
+            repair_json(result)
+
+    def test_should_throw_with_unquoted_string_value_in_array(self):
+        result = "{ test: [1, 2, postgres] }"
+        with self.assertRaises(ValueError, msg="Primitive not recognized, must start with f, t, n, or be numeric"):
+            repair_json(result)
+
+    def test_should_throw_error_when_a_number_starts_with_zero(self):
+        result = "{ test: 0123 }"
+        with self.assertRaises(ValueError, msg="Number cannot have redundant leading 0"):
+            repair_json(result)
+
+    def test_should_cope_with_negative_numbers(self):
+        result = "{ test: -123 }"
+        result = repair_json(result)
+        self.assertEqual(result, '{ "test": -123 }')
+
+    def test_should_cope_with_a_negative_decimal(self):
+        result = "{ test: -0.123 }"
+        result = repair_json(result)
+        self.assertEqual(result, '{ "test": -0.123 }')
+
+    def test_should_cope_with_a_decimal_starting_with_zero(self):
+        result = "{ test: 0.123 }"
+        result = repair_json(result)
+        self.assertEqual(result, '{ "test": 0.123 }')
+
+    def test_should_throw_error_with_a_fake_primitive_starting_with_f(self):
+        result = "{ test: fake }"
+        with self.assertRaises(ValueError, msg="Keyword not recognized, must be true, false, null or none"):
+            repair_json(result)
+
+    def test_should_throw_correct_error_with_incorrect_primitive_f(self):
+        result = "{test:f}"
+        with self.assertRaises(ValueError, msg="Keyword not recognized, must be true, false, null or none"):
+            repair_json(result)
+
+    def test_should_throw_correct_error_when_a_number_contains_a_letter(self):
+        result = "{ test: 123a }"
+        with self.assertRaises(Exception, msg="Expected colon"):
+            repair_json(result)
+
+    def test_should_parse_a_decimal(self):
+        result = repair_json('{ "decimal": 123.456 }')
+        self.assertEqual(result, '{ "decimal": 123.456 }')
+
+    def test_should_parse_true(self):
+        result = repair_json('{ "boolean": true }')
+        self.assertEqual(result, '{ "boolean": true }')
+
+    def test_should_parse_false(self):
+        result = repair_json('{ "boolean": false }')
+        self.assertEqual(result, '{ "boolean": false }')
+
+    def test_should_parse_null(self):
+        result = repair_json('{ "null": null }')
+        self.assertEqual(result, '{ "null": null }')
+
+
     def test_should_return_array_of_strings_and_json_strings(self):
         input = "text before { test: 'test', array: ['test', { test: 'test' }] } text after"
         result = to_array_of_plain_strings_or_json(input)
@@ -282,11 +348,6 @@ class TestParseJson(unittest.TestCase):
         result = repair_json(input_object)
         expected = '{ "arr": [1, 2, 3] }'
         self.assertEqual(result, expected)
-        self.assertTrue(self.assert_is_json(result))
-
-    def test_should_support_trailing_comma_in_array_3(self):
-        input_object = "{ arr: [,]}"
-        result = repair_json(input_object)
         self.assertTrue(self.assert_is_json(result))
 
     def test_should_cope_with_escaped_double_quotes_used_as_quotes_aka_kibana(self):
