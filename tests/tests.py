@@ -28,7 +28,6 @@ class TestParseJson(unittest.TestCase):
         result = repair_json('{ "number": 123 }')
         self.assertEqual(result, '{ "number": 123 }')
 
-
     def test_should_parse_scientific_notation_with_plus(self):
         result = repair_json('{ "number": 1.23e+20 }')
         self.assertEqual(result, '{ "number": 1.23e+20 }')
@@ -130,7 +129,6 @@ class TestParseJson(unittest.TestCase):
     def test_should_parse_null(self):
         result = repair_json('{ "null": null }')
         self.assertEqual(result, '{ "null": null }')
-
 
     def test_should_return_array_of_strings_and_json_strings(self):
         input = "text before { test: 'test', array: ['test', { test: 'test' }] } text after"
@@ -469,6 +467,17 @@ class TestParseJson(unittest.TestCase):
         self.assertEqual(result, expected)
         self.assertTrue(self.assert_is_json(result))
 
+    def test_should_repair_extra_commas_in_both_array_and_after_value(self):
+        object = '{"artist":["keith",8,2,],}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "artist": ["keith", 8, 2] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_add_missing_commas_in_various_examples(self):
+        object = '{"artist":[5 22 32.1 44 {"two":7 eight:9}],}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "artist": [5, 22, 32.1, 44, { "two": 7, "eight": 9 }] }')
+        self.assertTrue(self.assert_is_json(result))
 
 if __name__ == '__main__':
     unittest.main()
