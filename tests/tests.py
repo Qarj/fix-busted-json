@@ -28,6 +28,48 @@ class TestParseJson(unittest.TestCase):
         result = repair_json('{ "number": 123 }')
         self.assertEqual(result, '{ "number": 123 }')
 
+
+    def test_should_parse_scientific_notation_with_plus(self):
+        result = repair_json('{ "number": 1.23e+20 }')
+        self.assertEqual(result, '{ "number": 1.23e+20 }')
+
+    def test_should_parse_scientific_notation_with_minus(self):
+        result = repair_json('{ "number": -1.23e-20 }')
+        self.assertEqual(result, '{ "number": -1.23e-20 }')
+
+    def test_should_parse_scientific_notation_without_plus(self):
+        result = repair_json('{ "number": 1.2e9 }')
+        self.assertEqual(result, '{ "number": 1.2e9 }')
+
+    def test_should_parse_scientific_notation_with_capital_E(self):
+        result = repair_json('{ "number": 1.2E9 }')
+        self.assertEqual(result, '{ "number": 1.2e9 }')
+
+    def test_should_throw_on_invalid_number(self):
+        result = "{ number: 1. }"
+        with self.assertRaises(ValueError, msg="Number cannot have trailing decimal point"):
+            repair_json(result)
+
+    def test_should_throw_when_number_has_a_leading_plus(self):
+        result = "{ number: +1 }"
+        with self.assertRaises(ValueError, msg="Primitive not recognized, must start with f, t, n, or be numeric"):
+            repair_json(result)
+
+    def test_should_throw_on_invalid_scientific_notation_case_1(self):
+        result = "{ number: 1.e9 }"
+        with self.assertRaises(ValueError, msg="Number cannot have decimal point followed by exponent"):
+            repair_json(result)
+
+    def test_should_throw_on_invalid_scientific_notation_case_2(self):
+        result = "{ number: 1.2e+ }"
+        with self.assertRaises(ValueError, msg="Number cannot have trailing sign"):
+            repair_json(result)
+
+    def test_should_throw_on_invalid_scientific_notation_case_3(self):
+        result = "{ number: 1.2e }"
+        with self.assertRaises(ValueError, msg="Number cannot have trailing exponent"):
+            repair_json(result)
+
     def test_should_throw_error_when_given_an_unquoted_string_value(self):
         result = "{ test: postgres }"
         with self.assertRaises(ValueError, msg="Primitive not recognized, must start with f, t, n, or be numeric"):

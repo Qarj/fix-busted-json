@@ -74,3 +74,10 @@ python -m twine upload dist/*
 pip uninstall fix-busted-json -y
 pip install fix-busted-json
 ```
+
+## Publish new version
+
+-   bump version in `setup.py`
+-   run `./build.sh`
+-   run `./testPublish.sh`
+-   run `./publish.sh`

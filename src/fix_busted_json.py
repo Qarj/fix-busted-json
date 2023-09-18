@@ -644,6 +644,8 @@ class JsonParser:
             number_str += self.inspected[self.position]
             self.position += 1
 
+        number_str = number_str.lower()
+
         check_str = number_str
         if check_str.startswith('-'):
             check_str = check_str[1:]
@@ -651,10 +653,22 @@ class JsonParser:
         if len(check_str) > 1 and check_str.startswith('0') and not check_str.startswith('0.'):
             raise ValueError('Number cannot have redundant leading 0')
 
+        if check_str.endswith('.'):
+            raise ValueError('Number cannot have trailing decimal point')
+
+        if '.e' in check_str or '.E' in check_str:
+            raise ValueError('Number cannot have decimal point followed by exponent')
+
+        if check_str.endswith('e') or check_str.endswith('E'):
+            raise ValueError('Number cannot have trailing exponent')
+
+        if check_str.endswith('-') or check_str.endswith('+'):
+            raise ValueError('Number cannot have trailing sign')
+
         self.quoted += number_str
 
     def is_number_char(self, char):
-        return char and re.match(r'[\-0-9.]', char)
+        return char and re.match(r'[\-\+eE0-9.]', char)
     
     def log(self, message):
         if self.debug:

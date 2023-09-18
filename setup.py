@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="fix-busted-json",                 # This is the name of the package
-    version="0.0.11",                       # The initial release version
+    version="0.0.12",                       # The release version
     author="Tim Buckland",                  # Full name of the author
     description="Fixes broken JSON string objects",
     long_description=long_description,      # Long description read from the the readme file
