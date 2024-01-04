@@ -75,6 +75,12 @@ pip uninstall fix-busted-json -y
 pip install fix-busted-json
 ```
 
+## Test
+
+```sh
+./test.sh
+```
+
 ## Publish new version
 
 -   bump version in `setup.py`

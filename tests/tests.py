@@ -479,6 +479,60 @@ class TestParseJson(unittest.TestCase):
         self.assertEqual(result, '{ "artist": [5, 22, 32.1, 44, { "two": 7, "eight": 9 }] }')
         self.assertTrue(self.assert_is_json(result))
 
+    def test_should_remove_extra_starting_double_quote_added_by_gpt_3_5_turbo(self):
+        object = '{"story": {""5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_not_remove_quoted_double_quote(self):
+        object = '{"story": {"\\"5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "\\"5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_not_remove_quoted_double_quote_followed_by_space_colon(self):
+        object = '{"story": {"\\" 5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "\\" 5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_not_get_confused_by_space_colon(self):
+        object = '{"story": {": 5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { ": 5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_not_get_confused_by_colon(self):
+        object = '{"story": {":5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { ":5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_single_quotes_at_start_of_double_quotes_key_followed_by_space_colon(self):
+        object = '{"story": {"\':5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "\':5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_backtick_at_start_of_double_quotes_key_followed_by_space_colon(self):
+        object = '{"story": {"`:5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "`:5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_single_quotes_at_start_of_double_quotes_key_not_followed_by_space_colon(self):
+        object = '{"story": {"\'-:5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "\'-:5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_backtick_at_start_of_double_quotes_key_not_followed_by_space_colon(self):
+        object = '{"story": {"`-:5": "10-10"}}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "story": { "`-:5": "10-10" } }')
+        self.assertTrue(self.assert_is_json(result))
+
 if __name__ == '__main__':
     unittest.main()
 

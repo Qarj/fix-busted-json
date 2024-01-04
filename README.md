@@ -17,6 +17,7 @@ This project fixes broken JSON with the following issues:
 -   Trailing comma after last key-value pair
 -   Concatenation of string fields
 -   Replace Python True/False/None with JSON true/false/null
+-   Remove additional double quote at start of key that gpt-3.5-turbo sometimes adds
 
 Utility functions are also provided for finding JSON objects in text.
 

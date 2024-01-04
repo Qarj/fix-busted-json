@@ -316,25 +316,36 @@ class JsonParser:
             )
         return False
 
-    def eat_quote_additional(self, quote):
+    def eat_long_quote(self, quote):
         eat_extra = len(quote) - 1
         for _ in range(eat_extra):
             self.position += 1
 
+    def eat_extra_starting_key_double_quote(self, quote):
+        if quote != '"':
+            return
+        if self.inspected[self.position] == '"':
+            virtual_position = self.eat_virtual_whitespace(self.position + 1)
+            if self.inspected[virtual_position] == ':':
+                return
+            self.log('eatExtraStartingKeyDoubleQuote')
+            self.position += 1
+
     def eat_quoted_key(self):
-        if self.debug:
-            print('eat_quoted_key', self.position, self.inspected[self.position])
+        self.log('eatQuotedKey')
         self.set_checkpoint()
         self.throw_if_json_special_character(self.inspected[self.position])
         quote = self.get_quote()
         self.quoted += '"'
         self.position += 1
-        self.eat_quote_additional(quote)
+        self.eat_long_quote(quote)
+        self.eat_extra_starting_key_double_quote(quote)
         while not self.check_quote(quote):
             self.eat_char_or_escaped_char(quote)
+        self.log('eatQuotedKey end')
         self.quoted += '"'
         self.position += 1
-        self.eat_quote_additional(quote)
+        self.eat_long_quote(quote)
 
     def eat_unquoted_key(self):
         if self.debug:
@@ -406,12 +417,12 @@ class JsonParser:
         quote = self.get_quote()
         self.quoted += '"'
         self.position += 1
-        self.eat_quote_additional(quote)
+        self.eat_long_quote(quote)
         while not self.is_end_quote_making_allowance_for_unescaped_single_quote(quote):
             self.eat_char_or_escaped_char(quote)
         self.quoted += '"'
         self.position += 1
-        self.eat_quote_additional(quote)
+        self.eat_long_quote(quote)
 
     def eat_concatenated_strings(self):
         if self.debug:
@@ -426,12 +437,12 @@ class JsonParser:
 
         quote = self.get_quote()
         self.position += 1
-        self.eat_quote_additional(quote)
+        self.eat_long_quote(quote)
         while not self.is_end_quote_making_allowance_for_unescaped_single_quote(quote):
             self.eat_char_or_escaped_char(quote)
         self.quoted += '"'
         self.position += 1
-        self.eat_quote_additional(quote)
+        self.eat_long_quote(quote)
 
         self.eat_concatenated_strings()
 
