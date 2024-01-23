@@ -495,7 +495,10 @@ class JsonParser:
             self.position += 1
         if (quote == "'" or quote == '`') and self.inspected[self.position] == '"':
             self.quoted += '\\'
-        self.quoted += self.inspected[self.position]
+        if (self.inspected[self.position] == '\n'):
+            self.quoted += '\\n'
+        else:
+            self.quoted += self.inspected[self.position]
         self.position += 1
 
     def eat_array(self):

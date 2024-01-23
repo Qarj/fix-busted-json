@@ -533,6 +533,25 @@ class TestParseJson(unittest.TestCase):
         self.assertEqual(result, '{ "story": { "`-:5": "10-10" } }')
         self.assertTrue(self.assert_is_json(result))
 
+    def test_should_repair_json_with_unescaped_newline_single_quote_outer(self):
+        object = '{"res": "Sorry.\nBye."}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "res": "Sorry.\\nBye." }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_repair_json_with_unescaped_newline_single_quote_inner(self):
+        object = "{'res': 'Sorry.\nBye.'}"
+        result = repair_json(object)
+        self.assertEqual(result, '{ "res": "Sorry.\\nBye." }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_repair_json_with_unescaped_newline_backtick_inner(self):
+        object = '{`res`: `Sorry.\nBye.`}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "res": "Sorry.\\nBye." }')
+        self.assertTrue(self.assert_is_json(result))
+
+
 if __name__ == '__main__':
     unittest.main()
 
