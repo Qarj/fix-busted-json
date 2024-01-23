@@ -497,6 +497,7 @@ class JsonParser:
             self.quoted += '\\'
         if (self.inspected[self.position] == '\n'):
             self.quoted += '\\n'
+            self.log('eatCharOrEscapedChar unescaped newline')
         else:
             self.quoted += self.inspected[self.position]
         self.position += 1
