@@ -472,6 +472,16 @@ class JsonParser:
             self.inspected[self.position + 1] == '\\' and
             self.inspected[self.position + 2] == '"'
         )
+    
+    def is_triple_escaped_double_quote(self):
+        if self.position + 3 >= len(self.inspected):
+            return False
+        return (
+            self.inspected[self.position] == '\\' and
+            self.inspected[self.position + 1] == '\\' and
+            self.inspected[self.position + 2] == '\\' and
+            self.inspected[self.position + 3] == '"'
+        )
 
     def eat_char_or_escaped_char(self, quote):
         if self.debug:
@@ -486,7 +496,12 @@ class JsonParser:
                 ' ' + str(ord(self.inspected[self.position])),
             )
         if not self.check_quote(quote) and self.inspected[self.position] == '\\':
+            if self.is_triple_escaped_double_quote():
+                self.log('eatCharOrEscapedChar triple escaped double quote')
+                self.position += 1
+                self.position += 1
             if self.is_double_escaped_double_quote():
+                self.log('eatCharOrEscapedChar double escaped double quote')
                 self.position += 1
             if (quote == "'" or quote == '`') and self.inspected[self.position + 1] == quote:
                 pass

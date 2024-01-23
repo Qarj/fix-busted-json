@@ -19,6 +19,7 @@ This project fixes broken JSON with the following issues:
 -   Replace Python True/False/None with JSON true/false/null
 -   Remove additional double quote at start of key that gpt-3.5-turbo sometimes adds
 -   Escape unescaped newline `\n` in string value
+-   Deal with many escaping la-la land cases e.g. `{\\"res\\": \\"{ \\\\\\"a\\\\\\": \\\\\\"b\\\\\\" }\\"}`
 
 Utility functions are also provided for finding JSON objects in text.
 

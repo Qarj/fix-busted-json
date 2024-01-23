@@ -551,6 +551,12 @@ class TestParseJson(unittest.TestCase):
         self.assertEqual(result, '{ "res": "Sorry.\\nBye." }')
         self.assertTrue(self.assert_is_json(result))
 
+    def test_should_repair_badly_mis_escaped_json(self):
+        object = '{\\"res\\": \\"{ \\\\\\"a\\\\\\": \\\\\\"b\\\\\\" }\\"}'
+        result = repair_json(object)
+        self.assertEqual(result, '{ "res": "{ \\"a\\": \\"b\\" }" }')
+        self.assertTrue(self.assert_is_json(result))
+
 
 if __name__ == '__main__':
     unittest.main()
