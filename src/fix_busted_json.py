@@ -3,6 +3,11 @@
 import json
 import re
 
+
+class JsonFixError(Exception):
+    pass
+
+
 def log(obj):
     if isinstance(obj, (int, float)):
         print(obj)
@@ -217,23 +222,23 @@ class JsonParser:
 
     def eat_open_angle_bracket(self):
         if self.inspected[self.position] != '<':
-            raise Exception('Expected open angle bracket')
+            raise JsonFixError('Expected open angle bracket')
         self.position += 1
 
     def eat_ref(self):
         if self.inspected[self.position] != 'r':
-            raise Exception('Expected r')
+            raise JsonFixError('Expected r')
         self.position += 1
         if self.inspected[self.position] != 'e':
-            raise Exception('Expected e')
+            raise JsonFixError('Expected e')
         self.position += 1
         if self.inspected[self.position] != 'f':
-            raise Exception('Expected f')
+            raise JsonFixError('Expected f')
         self.position += 1
 
     def eat_asterisk(self):
         if self.inspected[self.position] != '*':
-            raise Exception('Expected asterisk')
+            raise JsonFixError('Expected asterisk')
         self.position += 1
 
     def eat_reference_number(self):
@@ -243,7 +248,7 @@ class JsonParser:
 
     def eat_close_angle_bracket(self):
         if self.inspected[self.position] != '>':
-            raise Exception('Expected close angle bracket')
+            raise JsonFixError('Expected close angle bracket')
         self.position += 1
 
     def eat_comma_post_value_optional(self):
@@ -261,7 +266,7 @@ class JsonParser:
         if self.debug:
             print('eat_open_brace', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '{':
-            raise Exception('Expected open brace')
+            raise JsonFixError('Expected open brace')
         self.quoted += self.inspected[self.position] + ' '
         self.position += 1
 
@@ -269,7 +274,7 @@ class JsonParser:
         if self.debug:
             print('eat_close_brace', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '}':
-            raise Exception('Expected close brace')
+            raise JsonFixError('Expected close brace')
         self.quoted += ' ' + self.inspected[self.position]
         self.position += 1
 
@@ -357,7 +362,7 @@ class JsonParser:
         self.quoted += '"'
         while self.inspected[self.position] != ':' and self.inspected[self.position] != ' ':
             if self.get_quote():
-                raise Exception('Unexpected quote in unquoted key')
+                raise JsonFixError('Unexpected quote in unquoted key')
             self.quoted += self.inspected[self.position]
             self.position += 1
         self.quoted += '"'
@@ -366,34 +371,34 @@ class JsonParser:
         if self.debug:
             print('eat_null_key', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '[':
-            raise Exception('Expected open bracket')
+            raise JsonFixError('Expected open bracket')
         self.position += 1
         if self.inspected[self.position].lower() != 'n':
-            raise Exception('Expected n')
+            raise JsonFixError('Expected n')
         self.position += 1
         if self.inspected[self.position].lower() != 'u':
-            raise Exception('Expected u')
+            raise JsonFixError('Expected u')
         self.position += 1
         if self.inspected[self.position].lower() != 'l':
-            raise Exception('Expected l')
+            raise JsonFixError('Expected l')
         self.position += 1
         if self.inspected[self.position].lower() != 'l':
-            raise Exception('Expected l')
+            raise JsonFixError('Expected l')
         self.position += 1
         if self.inspected[self.position] != ']':
-            raise Exception('Expected close bracket')
+            raise JsonFixError('Expected close bracket')
         self.position += 1
         self.quoted += '"null"'
 
     def throw_if_json_special_character(self, char):
         if char in ['{', '}', '[', ']', ':', ',']:
-            raise Exception(f'Unexpected character {char} at position {self.position}')
+            raise JsonFixError(f'Unexpected character {char} at position {self.position}')
 
     def eat_colon(self):
         if self.debug:
             print('eat_colon', self.position, self.inspected[self.position])
         if self.inspected[self.position] != ':':
-            raise Exception('Expected colon')
+            raise JsonFixError('Expected colon')
         self.quoted += self.inspected[self.position] + ' '
         self.position += 1
 
@@ -487,7 +492,7 @@ class JsonParser:
         if self.debug:
             print('eat_char_or_escaped_char', self.position, self.inspected[self.position])
         if self.position >= len(self.inspected):
-            raise Exception('Unexpected end of quoted key or string')
+            raise JsonFixError('Unexpected end of quoted key or string')
         if self.debug:
             print(
                 'eatCharOrEscapedChar',
@@ -521,7 +526,7 @@ class JsonParser:
         if self.debug:
             print('eat_array', self.position, self.inspected[self.position])
         if self.inspected[self.position] != '[':
-            raise Exception('Expected array')
+            raise JsonFixError('Expected array')
         self.quoted += self.inspected[self.position]
         self.position += 1
 
@@ -573,7 +578,7 @@ class JsonParser:
         if self.debug:
             print('eat_comma', self.position, self.inspected[self.position])
         if self.inspected[self.position] != ',':
-            raise Exception('Expected comma')
+            raise JsonFixError('Expected comma')
         self.quoted += self.inspected[self.position] + ' '
         self.quoted_last_comma_position = len(self.quoted) - 2
         self.position += 1
@@ -581,7 +586,7 @@ class JsonParser:
 
     def eat_close_bracket(self):
         if self.inspected[self.position] != ']':
-            raise Exception('Expected close bracket')
+            raise JsonFixError('Expected close bracket')
         self.quoted += self.inspected[self.position]
         self.position += 1
         return False
