@@ -108,7 +108,12 @@ def json_matching(input, regex):
     return ""
 
 class JsonParser:
-    def __init__(self, input):
+    def __init__(self, input, options=None):
+        if options is None:
+            options = {}
+        # options to align with JS project
+        self.attempt_repair_of_mismatched_quotes = bool(options.get('attemptRepairOfMismatchedQuotes'))
+        self.attempt_repair_of_missing_value_quotes = bool(options.get('attemptRepairOfMissingValueQuotes'))
         self.inspected = self.de_stringify(input)
         self.reset_pointer()
         self.debug = False
@@ -157,6 +162,8 @@ class JsonParser:
                 try:
                     self.eat_object()
                 except Exception as e:
+                    # Reset any partial output collected during failed object parse
+                    self.quoted = ''
                     self.quoted += '{'
                     self.position = recovery_position
 
@@ -293,8 +300,11 @@ class JsonParser:
             return '"'
         if self.inspected[self.position] == '`':
             return '`'
+        # Curly quotes pairs
         if self.inspected[self.position] == '“':
             return '”'
+        if self.inspected[self.position] == '”':
+            return '“'
         if self.inspected[self.position] == '\\' and self.inspected[self.position + 1] == '"':
             return '\\"'
         if (
@@ -307,6 +317,9 @@ class JsonParser:
 
     def check_quote(self, quote):
         if len(quote) == 1:
+            # in extreme mode allow mismatched quotes as enders
+            if self.attempt_repair_of_mismatched_quotes:
+                return self.inspected[self.position] in ['"', "'", '`', '”', '“']
             return self.inspected[self.position] == quote
         if len(quote) == 2:
             return (
@@ -413,7 +426,13 @@ class JsonParser:
         elif self.inspected[self.position] == '[':
             self.eat_array()
         else:
-            self.eat_primitive()
+            try:
+                self.eat_primitive()
+            except Exception:
+                if self.attempt_repair_of_missing_value_quotes:
+                    self.eat_unquoted_value_string_naively()
+                else:
+                    raise
 
     def eat_string(self):
         if self.debug:
@@ -440,7 +459,10 @@ class JsonParser:
         self.eat_whitespace()
         self.quoted = self.quoted[:-1]
 
+        # Ensure there is a string after '+'
         quote = self.get_quote()
+        if not quote:
+            raise JsonFixError('Expected string after +')
         self.position += 1
         self.eat_long_quote(quote)
         while not self.is_end_quote_making_allowance_for_unescaped_single_quote(quote):
@@ -532,6 +554,7 @@ class JsonParser:
 
         while True:
             self.eat_whitespace()
+            self.eat_array_index_optional()
             self.eat_circular_optional()
             if self.inspected[self.position] == ']':
                 self.remove_trailing_comma_if_present()
@@ -547,8 +570,76 @@ class JsonParser:
 
         self.eat_close_bracket()
 
+    # Handle index labels within arrays like:
+    # 0: value
+    # 0 => value
+    # 0 = value
+    # [0] => value
+    # [0] : value
+    def eat_array_index_optional(self):
+        pos = self.position
+        n = len(self.inspected)
+        # bracketed form: [digits] => or :
+        if pos < n and self.inspected[pos] == '[':
+            p = pos + 1
+            # skip whitespace
+            while p < n and self.inspected[p].isspace():
+                p += 1
+            # must have at least one digit
+            if p < n and self.inspected[p].isdigit():
+                while p < n and self.inspected[p].isdigit():
+                    p += 1
+                # skip whitespace to closing ]
+                while p < n and self.inspected[p].isspace():
+                    p += 1
+                if p < n and self.inspected[p] == ']':
+                    p += 1
+                    # skip whitespace
+                    while p < n and self.inspected[p].isspace():
+                        p += 1
+                    if p < n and self.inspected[p] == ':':
+                        p += 1
+                        while p < n and self.inspected[p].isspace():
+                            p += 1
+                        self.position = p
+                        return True
+                    if p < n and self.inspected[p] == '=':
+                        p += 1
+                        while p < n and self.inspected[p].isspace():
+                            p += 1
+                        if p < n and self.inspected[p] == '>':
+                            p += 1
+                        while p < n and self.inspected[p].isspace():
+                            p += 1
+                        self.position = p
+                        return True
+        # non-bracketed numeric label
+        p = pos
+        if p < n and self.inspected[p].isdigit():
+            while p < n and self.inspected[p].isdigit():
+                p += 1
+            while p < n and self.inspected[p].isspace():
+                p += 1
+            if p < n and self.inspected[p] == ':':
+                p += 1
+                while p < n and self.inspected[p].isspace():
+                    p += 1
+                self.position = p
+                return True
+            if p < n and self.inspected[p] == '=':
+                p += 1
+                while p < n and self.inspected[p].isspace():
+                    p += 1
+                if p < n and self.inspected[p] == '>':
+                    p += 1
+                while p < n and self.inspected[p].isspace():
+                    p += 1
+                self.position = p
+                return True
+        return False
+
     def remove_trailing_comma_if_present(self):
-        if self.quoted_last_comma_position:
+        if self.quoted_last_comma_position is not None:
             self.quoted = (
                 self.quoted[:self.quoted_last_comma_position] +
                 self.quoted[self.quoted_last_comma_position + 2:]
@@ -641,7 +732,10 @@ class JsonParser:
         if self.debug:
             print('eatPrimitive', self.position, self.inspected[self.position])
 
-        lower_char = self.inspected[self.position].lower()
+        current_char = self.inspected[self.position] if self.position < len(self.inspected) else ''
+        if not current_char:
+            raise ValueError('Primitive not recognized, must start with f, t, n, or be numeric')
+        lower_char = current_char.lower()
         if lower_char == 'f' or lower_char == 't' or lower_char == 'n':
             self.eat_keyword()
         elif self.is_number_start_char(lower_char):
@@ -708,4 +802,18 @@ class JsonParser:
     def log(self, message):
         if self.debug:
             print(message, self.position, self.inspected[self.position])
+
+    def eat_unquoted_value_string_naively(self):
+        # consume a naive string until ',', '}', or ']'
+        self.quoted += '"'
+        while not self.is_naive_end_of_string_character():
+            # reuse char eating similar to strings: treat single-quoted logic for escaping
+            self.eat_char_or_escaped_char("'")
+        self.quoted += '"'
+
+    def is_naive_end_of_string_character(self):
+        if self.position >= len(self.inspected):
+            return True
+        value = self.inspected[self.position]
+        return value in [',', '}', ']']
 

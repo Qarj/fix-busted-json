@@ -492,9 +492,9 @@ class TestParseJson(unittest.TestCase):
         self.assertTrue(self.assert_is_json(result))
 
     def test_should_not_remove_quoted_double_quote_followed_by_space_colon(self):
-        object = '{"story": {"\\" 5": "10-10"}}'
+        object = '{"story": {"\\": 5": "10-10"}}'
         result = repair_json(object)
-        self.assertEqual(result, '{ "story": { "\\" 5": "10-10" } }')
+        self.assertEqual(result, '{ "story": { "\\": 5": "10-10" } }')
         self.assertTrue(self.assert_is_json(result))
 
     def test_should_not_get_confused_by_space_colon(self):
@@ -556,6 +556,279 @@ class TestParseJson(unittest.TestCase):
         result = repair_json(object)
         self.assertEqual(result, '{ "res": "{ \\"a\\": \\"b\\" }" }')
         self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_array_index_labels_when_items_are_well_formed(self):
+        scenario = """{
+        "requirements": [
+            0: { "requirement_index": 0, "importance": "very important" },
+            1: { "requirement_index": 1, "importance": "sort of important" }
+        ]
+    }"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "very important" }, { "requirement_index": 1, "importance": "sort of important" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_array_index_labels_with_missing_commas_between_items(self):
+        scenario = """{
+        "requirements": [
+            0: { "requirement_index": 0, "importance": "very important" }
+            1: { "requirement_index": 1, "importance": "sort of important" }
+        ]
+    }"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "very important" }, { "requirement_index": 1, "importance": "sort of important" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_array_index_labels_with_missing_commas_inside_object_items(self):
+        scenario = """{
+        "requirements": [
+            0: { "requirement_index": 0
+                 "importance": "mandatory" },
+            1: { "requirement_index": 1
+                 "importance": "essential" }
+        ]
+    }"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "mandatory" }, { "requirement_index": 1, "importance": "essential" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_repair_messy_logged_array_with_index_labels_and_missing_commas(self):
+        scenario = """{
+requirements: [
+0: {
+requirement_index: 0
+importance: "very important"
+}
+1: {
+requirement_index: 1
+importance: "sort of important"
+}
+2: {
+requirement_index: 2
+importance: "maybe important"
+}
+3: {
+requirement_index: 3
+importance: "somewhat important"
+}
+4: {
+requirement_index: 4
+importance: "yes"
+}
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "very important" }, { "requirement_index": 1, "importance": "sort of important" }, { "requirement_index": 2, "importance": "maybe important" }, { "requirement_index": 3, "importance": "somewhat important" }, { "requirement_index": 4, "importance": "yes" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_arrays_within_arrays_using_index_labels(self):
+        scenario = """{
+arr: [
+  0: [
+    0: 1
+    1: 2
+  ]
+  1: [
+    0: 3
+    1: 4
+  ]
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": [[1, 2], [3, 4]] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_array_index_labels_using_arrow_when_items_well_formed(self):
+        scenario = """{
+        "requirements": [
+            0 => { "requirement_index": 0, "importance": "mandatory" },
+            1 => { "requirement_index": 1, "importance": "essential" }
+        ]
+    }"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "mandatory" }, { "requirement_index": 1, "importance": "essential" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_array_index_labels_using_equals_when_items_well_formed(self):
+        scenario = """{
+        "requirements": [
+            0 = { "requirement_index": 0, "importance": "mandatory" },
+            1 = { "requirement_index": 1, "importance": "essential" }
+        ]
+    }"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "mandatory" }, { "requirement_index": 1, "importance": "essential" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_array_index_labels_arrow_with_missing_commas_between_items(self):
+        scenario = """{
+        "requirements": [
+            0 => { "requirement_index": 0, "importance": "mandatory" }
+            1 => { "requirement_index": 1, "importance": "essential" }
+        ]
+    }"""
+        result = repair_json(scenario)
+        self.assertEqual(
+            result,
+            '{ "requirements": [{ "requirement_index": 0, "importance": "mandatory" }, { "requirement_index": 1, "importance": "essential" }] }'
+        )
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_whitespace_variations_around_arrow_and_equals_index_labels(self):
+        scenario = """{
+arr: [
+  0   =>  "a"
+  1= > "b"
+  2 =   >  "c"
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": ["a", "b", "c"] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_multi_digit_index_labels_with_arrow(self):
+        scenario = """{
+arr: [
+  10 => 100,
+  11 => 200
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": [100, 200] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_nested_arrays_with_arrow_and_equals_labels(self):
+        scenario = """{
+arr: [
+  0 => [
+    0 = 1
+    1 => 2
+  ]
+  1 = [
+    0 => 3,
+    1 = 4
+  ]
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": [[1, 2], [3, 4]] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_mixed_index_label_separators(self):
+        scenario = """{
+arr: [
+  0: "a",
+  1 => "b"
+  2 = "c"
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": ["a", "b", "c"] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_not_treat_plain_numeric_elements_as_index_labels(self):
+        scenario = '{ arr: [0, 1, 2] }'
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": [0, 1, 2] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_bracketed_array_index_labels_with_colon_including_trailing_comma(self):
+        scenario = """{
+arr: [
+  [0] : "a",
+  [1] : "b",
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": ["a", "b"] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_insert_missing_commas_with_bracketed_colon_index_labels(self):
+        scenario = """{
+arr: [
+  [0] :"a"
+  [1] :"b"
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": ["a", "b"] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_nested_arrays_with_bracketed_colon_index_labels(self):
+        scenario = """{
+arr: [
+  [0] : [
+    [0] : 1
+    [1] : 2
+  ]
+  [1] : [
+    [0] : 3,
+    [1] : 4
+  ]
+]
+}"""
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "arr": [[1, 2], [3, 4]] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_concatenate_strings_across_newline_after_plus(self):
+        scenario = '{ "abc": "hello" + \n "world" }'
+        result = repair_json(scenario)
+        self.assertEqual(result, '{ "abc": "helloworld" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_throw_expected_n_when_null_key_truncated_after_bracket(self):
+        with self.assertRaises(Exception):
+            repair_json('{ [')
+
+    def test_should_throw_expected_u_when_null_key_truncated_after_n(self):
+        with self.assertRaises(Exception):
+            repair_json('{ [n')
+
+    def test_should_throw_expected_l_when_null_key_truncated_after_nu(self):
+        with self.assertRaises(Exception):
+            repair_json('{ [nu')
+
+    def test_should_throw_expected_close_bracket_when_null_key_missing_closing_bracket(self):
+        with self.assertRaises(Exception):
+            repair_json('{ [null')
+
+    def test_should_preserve_stray_open_brace_when_object_parse_fails_in_to_array(self):
+        scenario = 'before { not json'
+        result = to_array_of_plain_strings_or_json(scenario)
+        self.assertEqual(result[0], 'before ')
+        self.assertEqual(result[1], '{')
+        self.assertEqual(result[2], ' not json')
+
+    def test_should_throw_helpful_error_when_array_ends_after_comma(self):
+        with self.assertRaises(Exception):
+            repair_json('{ arr: [1,')
+
+    def test_should_throw_expected_colon_when_input_ends_after_unquoted_key(self):
+        with self.assertRaises(Exception):
+            repair_json('{ onlyKey')
+
+    def test_should_throw_clear_error_when_string_concatenation_missing_rhs(self):
+        with self.assertRaises(Exception):
+            repair_json('{ "abc": "a" + }')
 
 
 if __name__ == '__main__':

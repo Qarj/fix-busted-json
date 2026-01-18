@@ -1,25 +1,35 @@
 # fix-busted-json
 
-Fix broken json using Python.
+Fix broken JSON using Python. Robustly recovers JSON from messy logs and semi-JSON-ish strings. This is the Python counterpart of the JavaScript package log-parsed-json, kept in close feature parity.
 
 For Python 3.6+.
 
 This project fixes broken JSON with the following issues:
 
--   Missing quotes around key names
--   Wrong quotes around key names and strings
-    -   Single quotes
-    -   Backticks
-    -   Escaped double quote
-    -   Double escaped double quote
-    -   "Smart" i.e. curly quotes
--   Missing commas between key-value pairs and array elements
--   Trailing comma after last key-value pair
--   Concatenation of string fields
--   Replace Python True/False/None with JSON true/false/null
--   Remove additional double quote at start of key that gpt-3.5-turbo sometimes adds
--   Escape unescaped newline `\n` in string value
--   Deal with many escaping la-la land cases e.g. `{\"res\": \"{ \\\"a\\\": \\\"b\\\" }\"}`
+- Missing quotes around key names
+- Wrong quotes around key names and strings
+  - Single quotes
+  - Backticks
+  - Escaped double quote
+  - Double escaped double quote
+  - "Smart" i.e. curly quotes
+- Missing commas between key-value pairs and array elements
+- Trailing comma after last key-value pair
+- Concatenation of string fields
+- Concatenation across newline after `+` (validated; error if RHS string is missing: `Expected string after +`)
+- Replace Python True/False/None with JSON true/false/null
+- Remove additional double quote at start of key that gpt-3.5-turbo sometimes adds
+- Escape unescaped newline `\n` in string value
+- Deal with many escaping la-la land cases e.g. `{\"res\": \"{ \\\"a\\\": \\\"b\\\" }\"}`
+- Tolerates mixed separators `:`, `=`, `=>`
+- Strips array index labels often seen in logs (e.g., `0: value`, `0 => value`, `[12] : value`) while preserving values
+- Improved primitive/number parsing (including scientific notation) and clearer EOF errors
+- Preserves escaped double quotes; normalizes unescaped newlines inside string values
+
+Advanced (optional) repair flags:
+
+- `attemptRepairOfMismatchedQuotes`: allows repairing strings with mismatched end quotes
+- `attemptRepairOfMissingValueQuotes`: attempts naive quoting of unquoted value strings
 
 Utility functions are also provided for finding JSON objects in text.
 
@@ -49,11 +59,11 @@ print(fixed_json)
 
 Note the issues in the invalid JSON:
 
--   name is unquoted
--   use of single quotes, JSON spec requires double quotes
--   Missing comma
--   Concatenation of string fields - not allowed in JSON
--   Trailing comma
+- name is unquoted
+- use of single quotes, JSON spec requires double quotes
+- Missing comma
+- Concatenation of string fields - not allowed in JSON
+- Trailing comma
 
 Run it:
 
@@ -171,6 +181,14 @@ Gives output:
 ['some text ', '{ "key1": true, "key2": "  { inner: \'value\', } " }', ' text ', '{ "a": 1 }', ' text']
 ```
 
+Notes:
+
+- If an object parse fails after encountering `{`, a stray `{` fragment may be preserved in the output of `to_array_of_plain_strings_or_json`.
+- Arrays with index labels like `0: value`, `0 = value`, `0 => value`, `[0] : value`, `[12] => value` are normalized by stripping labels and keeping only values in order.
+- Concatenation across newline after `+` is supported; if the right-hand string is missing, a clear error is raised: `Expected string after +`.
+- Numeric parsing supports scientific notation.
+- Escaped double quotes are preserved; unescaped newlines in string values are converted to `\n`.
+
 ### first_json, last_json, largest_json, json_matching
 
 Utility functions for finding JSON objects in text.
@@ -200,3 +218,19 @@ Output:
 ## See also
 
 Node version of this project: https://www.npmjs.com/package/log-parsed-json
+
+## Advanced options
+
+You can enable extreme repair behaviors via `JsonParser(options)`:
+
+```py
+#!/usr/bin/env python3
+from fix_busted_json import JsonParser
+
+parser = JsonParser({
+  'attemptRepairOfMismatchedQuotes': True,
+  'attemptRepairOfMissingValueQuotes': True,
+})
+
+print(parser.parse('{"a": "hello\nworld"}'))
+```
