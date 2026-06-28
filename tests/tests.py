@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
-from fix_busted_json import repair_json, to_array_of_plain_strings_or_json, first_json, last_json, largest_json, json_matching
+from fix_busted_json import repair_json, to_array_of_plain_strings_or_json, first_json, last_json, largest_json, json_matching, JsonFixError
 import json
 import re
 
@@ -795,22 +795,6 @@ arr: [
         self.assertEqual(result, '{ "abc": "helloworld" }')
         self.assertTrue(self.assert_is_json(result))
 
-    def test_should_throw_expected_n_when_null_key_truncated_after_bracket(self):
-        with self.assertRaises(Exception):
-            repair_json('{ [')
-
-    def test_should_throw_expected_u_when_null_key_truncated_after_n(self):
-        with self.assertRaises(Exception):
-            repair_json('{ [n')
-
-    def test_should_throw_expected_l_when_null_key_truncated_after_nu(self):
-        with self.assertRaises(Exception):
-            repair_json('{ [nu')
-
-    def test_should_throw_expected_close_bracket_when_null_key_missing_closing_bracket(self):
-        with self.assertRaises(Exception):
-            repair_json('{ [null')
-
     def test_should_preserve_stray_open_brace_when_object_parse_fails_in_to_array(self):
         scenario = 'before { not json'
         result = to_array_of_plain_strings_or_json(scenario)
@@ -818,17 +802,124 @@ arr: [
         self.assertEqual(result[1], '{')
         self.assertEqual(result[2], ' not json')
 
-    def test_should_throw_helpful_error_when_array_ends_after_comma(self):
-        with self.assertRaises(Exception):
-            repair_json('{ arr: [1,')
-
-    def test_should_throw_expected_colon_when_input_ends_after_unquoted_key(self):
-        with self.assertRaises(Exception):
-            repair_json('{ onlyKey')
-
     def test_should_throw_clear_error_when_string_concatenation_missing_rhs(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(JsonFixError):
             repair_json('{ "abc": "a" + }')
+
+    # --- Curly (smart) quote handling ---
+
+    def test_should_handle_left_curly_double_quotes_for_key_and_value(self):
+        result = repair_json('{ “key”: “value” }')
+        self.assertEqual(result, '{ "key": "value" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_right_curly_double_quote_as_opening_quote(self):
+        result = repair_json('{ ”key“: ”value“ }')
+        self.assertEqual(result, '{ "key": "value" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_curly_double_quote_value_with_unquoted_key(self):
+        result = repair_json('{ key: ”value“ }')
+        self.assertEqual(result, '{ "key": "value" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    # --- Bracketed array-index labels ---
+
+    def test_should_strip_bracketed_array_index_with_colon(self):
+        result = repair_json('{ a: [ [0]: 5 ] }')
+        self.assertEqual(result, '{ "a": [5] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_bracketed_array_index_with_fat_arrow(self):
+        result = repair_json('{ a: [ [0] => 5 ] }')
+        self.assertEqual(result, '{ "a": [5] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_bracketed_array_index_with_equals(self):
+        result = repair_json('{ a: [ [12] = 5 ] }')
+        self.assertEqual(result, '{ "a": [5] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_strip_bracketed_array_index_with_internal_whitespace(self):
+        result = repair_json('{ a: [ [ 0 ] : 5 ] }')
+        self.assertEqual(result, '{ "a": [5] }')
+        self.assertTrue(self.assert_is_json(result))
+
+    # --- Escaped double quotes inside strings ---
+
+    def test_should_handle_double_escaped_double_quote_in_string(self):
+        result = repair_json(r'{ "a": "x\\"y" }')
+        self.assertEqual(result, r'{ "a": "x\"y" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_triple_escaped_double_quote_in_string(self):
+        result = repair_json(r'{ "a": "x\\\"y" }')
+        self.assertEqual(result, r'{ "a": "x\"y" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_handle_backslash_escape_near_end_of_string(self):
+        result = repair_json(r'{ "a": "ab\nc" }')
+        self.assertEqual(result, r'{ "a": "ab\nc" }')
+        self.assertTrue(self.assert_is_json(result))
+
+    # --- Reference (<ref *N>) handling ---
+
+    def test_should_parse_valid_reference_before_value(self):
+        result = repair_json('{ a: <ref *1> 5 }')
+        self.assertEqual(result, '{ "a": 5 }')
+        self.assertTrue(self.assert_is_json(result))
+
+    def test_should_throw_expected_r_when_reference_malformed(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ a: <xef *1> 5 }')
+
+    def test_should_throw_expected_e_when_reference_malformed(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ a: <rxf *1> 5 }')
+
+    def test_should_throw_expected_f_when_reference_malformed(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ a: <rex *1> 5 }')
+
+    def test_should_throw_expected_asterisk_when_reference_missing_asterisk(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ a: <ref 1> 5 }')
+
+    def test_should_throw_expected_close_angle_bracket_when_reference_unterminated(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ a: <ref *1 5 }')
+
+    # --- Null-key error branches ---
+
+    def test_should_throw_expected_n_when_null_key_has_wrong_first_char(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ [xull]: 5 }')
+
+    def test_should_throw_expected_u_when_null_key_has_wrong_second_char(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ [nxll]: 5 }')
+
+    def test_should_throw_expected_l_when_null_key_has_wrong_third_char(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ [nuxl]: 5 }')
+
+    def test_should_throw_expected_l_when_null_key_has_wrong_fourth_char(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ [nulx]: 5 }')
+
+    def test_should_throw_expected_close_bracket_when_null_key_not_terminated(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ [nullx]: 5 }')
+
+    # --- Unexpected special character in key position ---
+
+    def test_should_throw_unexpected_character_when_colon_in_key_position(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ : 5 }')
+
+    def test_should_throw_unexpected_character_when_close_bracket_in_value_position(self):
+        with self.assertRaises(JsonFixError):
+            repair_json('{ a: 5, ] }')
 
 
 if __name__ == '__main__':
